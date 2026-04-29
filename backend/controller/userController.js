@@ -97,14 +97,7 @@ exports.signup = async (req, res) => {
       return res.status(400).json({ message: "Password is required" });
     }
 
-    const userCount = await prisma.user.count();
-    const canCreateAdmin = userCount === 0 || isAdmin(req.user);
-    const finalRole =
-      canCreateAdmin && role === "ADMIN"
-        ? "ADMIN"
-        : userCount === 0
-          ? "ADMIN"
-          : "USER";
+    const finalRole = role === "ADMIN" ? "ADMIN" : "USER";
 
     const hash = await bcrypt.hash(password, 10);
 
