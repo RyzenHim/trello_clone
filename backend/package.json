@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon index",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "start": "node index.js"
   },
   "keywords": [],
   "author": "",
