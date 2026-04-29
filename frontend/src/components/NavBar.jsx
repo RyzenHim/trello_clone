@@ -5,8 +5,10 @@ import api from "../api/axios";
 const NavBar = () => {
     const navigate = useNavigate();
     const outSideCloseRef = useRef(null);
+    const mobileMenuRef = useRef(null);
 
     const [open, setOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [name, setName] = useState("User");
     const [role, setRole] = useState("USER");
 
@@ -74,6 +76,26 @@ const NavBar = () => {
         };
     }, [open]);
 
+    /* ================= MOBILE MENU CLOSE OUTSIDE CLICK ================= */
+    useEffect(() => {
+        const handleBackdropClick = (e) => {
+            if (
+                mobileMenuRef.current &&
+                !mobileMenuRef.current.contains(e.target)
+            ) {
+                setMobileMenuOpen(false);
+            }
+        };
+
+        if (mobileMenuOpen) {
+            document.addEventListener("mousedown", handleBackdropClick);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleBackdropClick);
+        };
+    }, [mobileMenuOpen]);
+
     /* ================= LOGOUT ================= */
     const handleLogOut = () => {
         localStorage.removeItem("token");
@@ -98,12 +120,15 @@ const NavBar = () => {
                 transition-all duration-300
             "
         >
-            <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
+            <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
                 {/* LOGO */}
                 <h1
-                    onClick={() => navigate("/")}
+                    onClick={() => {
+                        navigate("/");
+                        setMobileMenuOpen(false);
+                    }}
                     className="
-                        text-xl font-semibold tracking-wide text-white cursor-pointer
+                        text-lg sm:text-xl font-semibold tracking-wide text-white cursor-pointer
                         drop-shadow-[0_0_12px_rgba(99,102,241,0.8)]
                         hover:scale-[1.03] transition
                     "
@@ -111,12 +136,12 @@ const NavBar = () => {
                     TODO
                 </h1>
 
-                {/* LINKS */}
+                {/* DESKTOP LINKS */}
                 <div
                     ref={navRef}
                     onMouseMove={moveCursor}
                     onMouseLeave={hideCursor}
-                    className="relative flex items-center gap-8"
+                    className="hidden md:flex items-center gap-6 lg:gap-8"
                 >
                     <NavLink to="/" data-nav-item className={linkClass}>
                         Dash Board
@@ -152,68 +177,187 @@ const NavBar = () => {
                     />
                 </div>
 
-                {/* PROFILE MENU */}
-                <div ref={outSideCloseRef} className="relative">
-                    <button
-                        onClick={() => setOpen(!open)}
-                        className="
-                            flex items-center gap-3 text-white/80
-                            hover:text-white transition
-                        "
-                    >
-                        <div
+                {/* RIGHT SECTION - PROFILE MENU + HAMBURGER */}
+                <div className="flex items-center gap-3 sm:gap-4">
+                    {/* PROFILE MENU - Desktop */}
+                    <div ref={outSideCloseRef} className="hidden sm:block relative">
+                        <button
+                            onClick={() => setOpen(!open)}
                             className="
-                                h-9 w-9 rounded-full
-                                bg-white/15
-                                border border-white/20
-                                flex items-center justify-center
-                                text-sm font-semibold text-white
+                                flex items-center gap-2 text-white/80
+                                hover:text-white transition
                             "
                         >
-                            {name?.[0].toUpperCase() || "U"}
-                        </div>
+                            <div
+                                className="
+                                    h-8 w-8 sm:h-9 sm:w-9 rounded-full
+                                    bg-white/15
+                                    border border-white/20
+                                    flex items-center justify-center
+                                    text-xs sm:text-sm font-semibold text-white
+                                "
+                            >
+                                {name?.[0].toUpperCase() || "U"}
+                            </div>
 
-                        <span className="hidden sm:block text-sm font-medium">
-                            {name.charAt(0).toUpperCase() + name.slice(1)}
-                        </span>
-                    </button>
+                            <span className="hidden sm:block text-xs sm:text-sm font-medium">
+                                {name.charAt(0).toUpperCase() + name.slice(1)}
+                            </span>
+                        </button>
 
-                    {open && (
-                        <div
-                            className="
-                                absolute right-0 mt-3 w-48
-                                bg-slate-950
-                                border border-white/20
-                                rounded-xl shadow-xl overflow-hidden
-                            "
-                        >
-                            <NavLink
-                                to="/profile"
-                                onClick={() => setOpen(false)}
-                                className={({ isActive }) =>
-                                    `block px-4 py-3 text-sm transition
+                        {open && (
+                            <div
+                                className="
+                                    absolute right-0 mt-3 w-48
+                                    bg-slate-950
+                                    border border-white/20
+                                    rounded-xl shadow-xl overflow-hidden
+                                "
+                            >
+                                <NavLink
+                                    to="/profile"
+                                    onClick={() => setOpen(false)}
+                                    className={({ isActive }) =>
+                                        `block px-4 py-3 text-sm transition
                                      ${isActive
+                                            ? "bg-white/10 text-white"
+                                            : "text-white/80 hover:bg-white/10"
+                                        }`
+                                    }
+                                >
+                                    View Profile
+                                </NavLink>
+
+                                <button
+                                    onClick={handleLogOut}
+                                    className="
+                                        w-full text-left px-4 py-3 text-sm
+                                        text-red-400 hover:bg-red-500/10 transition
+                                    "
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* HAMBURGER MENU - Mobile */}
+                    <button
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        className="md:hidden flex flex-col gap-1.5 w-6 h-6 items-center justify-center"
+                        aria-label="Toggle menu"
+                    >
+                        <span
+                            className={`
+                                w-6 h-0.5 bg-white rounded transition-all duration-300
+                                ${mobileMenuOpen ? "rotate-45 translate-y-2" : ""}
+                            `}
+                        />
+                        <span
+                            className={`
+                                w-6 h-0.5 bg-white rounded transition-all duration-300
+                                ${mobileMenuOpen ? "opacity-0" : ""}
+                            `}
+                        />
+                        <span
+                            className={`
+                                w-6 h-0.5 bg-white rounded transition-all duration-300
+                                ${mobileMenuOpen ? "-rotate-45 -translate-y-2" : ""}
+                            `}
+                        />
+                    </button>
+                </div>
+            </div>
+
+            {/* MOBILE MENU */}
+            {mobileMenuOpen && (
+                <div
+                    ref={mobileMenuRef}
+                    className="
+                        md:hidden absolute top-16 left-0 right-0
+                        bg-slate-950/95 backdrop-blur-sm
+                        border-b border-white/10
+                        shadow-lg
+                        animate-slideDown
+                    "
+                >
+                    <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-2">
+                        <NavLink
+                            to="/"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={({ isActive }) =>
+                                `px-4 py-3 rounded-lg text-sm font-medium transition
+                                ${isActive
+                                    ? "bg-white/10 text-white"
+                                    : "text-white/80 hover:bg-white/10"
+                                }`
+                            }
+                        >
+                            Dash Board
+                        </NavLink>
+
+                        {role === "ADMIN" && (
+                            <NavLink
+                                to="/admin/users"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={({ isActive }) =>
+                                    `px-4 py-3 rounded-lg text-sm font-medium transition
+                                    ${isActive
                                         ? "bg-white/10 text-white"
                                         : "text-white/80 hover:bg-white/10"
                                     }`
                                 }
                             >
-                                View Profile
+                                Manage Users
+                            </NavLink>
+                        )}
+
+                        <NavLink
+                            to="/boards"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={({ isActive }) =>
+                                `px-4 py-3 rounded-lg text-sm font-medium transition
+                                ${isActive
+                                    ? "bg-white/10 text-white"
+                                    : "text-white/80 hover:bg-white/10"
+                                }`
+                            }
+                        >
+                            My Boards
+                        </NavLink>
+
+                        {/* PROFILE SECTION - Mobile Only */}
+                        <div className="sm:hidden border-t border-white/10 mt-2 pt-2">
+                            <NavLink
+                                to="/profile"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={({ isActive }) =>
+                                    `block px-4 py-3 rounded-lg text-sm font-medium transition
+                                    ${isActive
+                                        ? "bg-white/10 text-white"
+                                        : "text-white/80 hover:bg-white/10"
+                                    }`
+                                }
+                            >
+                                Profile
                             </NavLink>
 
                             <button
-                                onClick={handleLogOut}
+                                onClick={() => {
+                                    handleLogOut();
+                                    setMobileMenuOpen(false);
+                                }}
                                 className="
-                                    w-full text-left px-4 py-3 text-sm
+                                    w-full text-left px-4 py-3 rounded-lg text-sm font-medium
                                     text-red-400 hover:bg-red-500/10 transition
                                 "
                             >
                                 Logout
                             </button>
                         </div>
-                    )}
+                    </div>
                 </div>
-            </div>
+            )}
         </nav>
     );
 };
