@@ -1,0 +1,106 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from '../../api/axios'
+
+const SignUp = () => {
+    const navigate = useNavigate()
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [message, setMessage] = useState(null)
+    const [loading, setLoading] = useState(false)
+    const handleSignup = async () => {
+        if (loading) return;
+        const signupdata = { name, email, password }
+        try {
+            setLoading(true)
+            const postSignUpData = await api.post('/user/signup', signupdata)
+            alert('Signup Completed Please login')
+            navigate('/user/login')
+        } catch (err) {
+            setMessage(err.response?.data?.message)
+        } finally {
+            setLoading(false)
+        }
+
+
+    }
+
+    return (
+        <div className="w-full">
+            {/* TITLE */}
+            <h2 className="text-2xl font-semibold text-white mb-2">
+                Create your account
+            </h2>
+            <p className={`text-sm  mb-6 ${message === null ? "text-gray-300" : "text-red-400"}`}>
+                {message || "Join the experience in just a few steps"}
+            </p>
+
+            {/* FORM */}
+            <div className="space-y-4">
+                <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    type="text"
+                    placeholder="Full name"
+                    className="w-full px-4 py-3 text-sm
+                     bg-white/10 text-white
+                     placeholder-gray-400
+                     border border-white/20 rounded-lg
+                     backdrop-blur-md
+                     shadow-inner
+                     focus:outline-none focus:border-indigo-400
+                     focus:ring-1 focus:ring-indigo-400/40
+                     transition"
+                />
+
+                <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    placeholder="Email address"
+                    className="w-full px-4 py-3 text-sm
+                     bg-white/10 text-white
+                     placeholder-gray-400
+                     border border-white/20 rounded-lg
+                     backdrop-blur-md
+                     shadow-inner
+                     focus:outline-none focus:border-indigo-400
+                     focus:ring-1 focus:ring-indigo-400/40
+                     transition"
+                />
+
+                <input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type="password"
+                    placeholder="Password"
+                    className="w-full px-4 py-3 text-sm
+                     bg-white/10 text-white
+                     placeholder-gray-400
+                     border border-white/20 rounded-lg
+                     backdrop-blur-md
+                     shadow-inner
+                     focus:outline-none focus:border-indigo-400
+                     focus:ring-1 focus:ring-indigo-400/40
+                     transition"
+                />
+
+                <button
+                    onClick={handleSignup}
+                    disabled={loading}
+                    className="relative w-full py-3 mt-2 rounded-lg
+                     bg-indigo-600 text-white text-sm font-medium
+                     hover:bg-indigo-500
+                     shadow-[0_12px_35px_rgba(99,102,241,0.45)]
+                     transition-all duration-300 disabled:cursor-not-allowed disabled:bg-indigo-400
+                     active:scale-[0.98]"
+                >
+                    {loading ? "Creating Account..." : "Create Account"}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export default SignUp;

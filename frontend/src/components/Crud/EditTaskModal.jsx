@@ -1,0 +1,223 @@
+import { useEffect, useState } from "react";
+import api from "../../api/axios";
+const EditTaskModal = ({
+    isOpen,
+    onClose,
+    task,
+    type,
+    onSuccess
+}) => {
+    const [form, setForm] = useState({
+        taskTitle: "",
+        taskDescription: "",
+        urgency: "",
+        status: "",
+        dueDate: "",
+        color: "#6366f1"
+    });
+
+    const isByMe = type === "byMe";
+    const isToMe = type === "toMe";
+    const canEditTask = isByMe || isToMe;
+
+    useEffect(() => {
+        if (task) {
+            setForm({
+                taskTitle: task.taskTitle || "",
+                taskDescription: task.taskDescription || "",
+                urgency: task.urgency || "",
+                status: task.status || "",
+                dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "",
+                color: task.color || "#6366f1"
+            });
+        }
+    }, [task]);
+
+    if (!isOpen || !task) return null;
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+
+        if (name === "status") {
+            if (task.status !== "Todo" && task.status !== "In Progress") return;
+            if (value !== "Todo" && value !== "In Progress" && value !== "Done") return;
+        }
+
+        setForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleUpdate = async () => {
+        try {
+            await api.patch(
+                `/user/updatetask/${task._id}`,
+                {
+                    ...form,
+                    dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`
+                    }
+                }
+            );
+
+            onClose();
+            onSuccess()
+        } catch (err) {
+            alert(err.response?.data?.message || "Update failed");
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!isByMe) return;
+
+        const confirmDelete = window.confirm(
+            "This will permanently delete the task. Continue?"
+        );
+
+        if (!confirmDelete) return;
+
+        try {
+            await api.delete(
+                `/user/deletetask/${task._id}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`
+                    }
+                }
+            );
+
+            onClose();
+        } catch (err) {
+            alert(err.response?.data?.message || "Delete failed");
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+                onClick={onClose}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            <div className="relative w-full max-w-2xl rounded-2xl
+                            bg-white/10 backdrop-blur-xl
+                            border border-white/20 shadow-2xl p-6">
+
+                <h2 className="text-lg font-semibold text-white mb-4">
+                    Edit Task
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    {/* TITLE */}
+                    <input
+                        name="taskTitle"
+                        value={form.taskTitle}
+                        onChange={handleChange}
+                        disabled={!canEditTask}
+                        className="md:col-span-2 glass-input disabled:opacity-40"
+                    />
+
+                    <input
+                        value={task.assignedTo?.name || ""}
+                        disabled
+                        className="glass-input opacity-50"
+                    />
+
+                    <select
+                        name="urgency"
+                        value={form.urgency}
+                        onChange={handleChange}
+                        disabled={!canEditTask}
+                        className="glass-input disabled:opacity-40"
+                    >
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                    </select>
+
+                    <input
+                        type="datetime-local"
+                        name="dueDate"
+                        value={form.dueDate}
+                        onChange={handleChange}
+                        disabled={!canEditTask}
+                        className="glass-input disabled:opacity-40"
+                    />
+
+                    <select
+                        name="status"
+                        value={form.status}
+                        onChange={handleChange}
+                        disabled={task.status === "Done"}
+                        className="glass-input"
+                    >
+                        <option value="Todo">Todo</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Done">Done</option>
+                    </select>
+
+                    <input
+                        type="color"
+                        name="color"
+                        value={form.color}
+                        onChange={handleChange}
+                        disabled={!canEditTask}
+                    />
+
+                    <textarea
+                        name="taskDescription"
+                        value={form.taskDescription}
+                        onChange={handleChange}
+                        disabled={!canEditTask}
+                        rows={4}
+                        className="md:col-span-2 glass-input disabled:opacity-40"
+                    />
+                </div>
+
+                <div className="flex justify-between items-center mt-6">
+
+                    {isByMe && (
+                        <button
+                            onClick={handleDelete}
+                            className="px-4 py-2 rounded-lg
+                                       bg-rose-500/20 text-rose-300
+                                       hover:bg-rose-500/30 transition"
+                        >
+                            Delete
+                        </button>
+                    )}
+
+                    <div className="flex gap-3 ml-auto">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 bg-white/10"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            onClick={handleUpdate}
+                            className="px-4 py-2 bg-indigo-500/30"
+                        >
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                .glass-input {
+                    padding: 0.6rem 0.9rem;
+                    border-radius: 0.5rem;
+                    background: rgba(0,0,0,0.35);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    color: white;
+                }
+            `}</style>
+        </div>
+    );
+};
+
+export default EditTaskModal;
