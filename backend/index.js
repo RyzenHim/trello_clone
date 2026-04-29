@@ -5,9 +5,13 @@ require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 8080;
 
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",")
+  : ["http://localhost:5173", "https://trello-clone-sigma.vercel.app"];
+
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://trello-clone-sigma.vercel.app"],
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
