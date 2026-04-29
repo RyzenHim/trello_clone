@@ -1,8 +1,6 @@
 const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const prisma = require("../config/prismaClient");
-const transporter = require("../utils/mailer");
 const { serializeTask, serializeUser } = require("../utils/transformers");
 
 const secretKey = process.env.SECRET_KEY;
@@ -16,10 +14,6 @@ const TASK_INCLUDE = {
 
 function isAdmin(user) {
   return user?.role === "ADMIN";
-}
-
-function generatePassword() {
-  return crypto.randomBytes(4).toString("hex");
 }
 
 function getPriorityValue(value = "Medium") {
@@ -54,14 +48,6 @@ async function canAccessBoard(user, boardId) {
   });
 
   return taskCount > 0;
-}
-
-async function sendMailIfPossible(payload) {
-  try {
-    await transporter.sendMail(payload);
-  } catch (error) {
-    console.error("Mail error:", error.message);
-  }
 }
 
 async function getUserTaskDetails(userId) {
@@ -107,17 +93,18 @@ exports.signup = async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
     }
 
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+
     const userCount = await prisma.user.count();
     const canCreateAdmin = userCount === 0 || isAdmin(req.user);
     const finalRole =
-      canCreateAdmin && role === "ADMIN" ? "ADMIN" : userCount === 0 ? "ADMIN" : "USER";
-
-    let generatedPassword = null;
-
-    if (!password) {
-      generatedPassword = generatePassword();
-      password = generatedPassword;
-    }
+      canCreateAdmin && role === "ADMIN"
+        ? "ADMIN"
+        : userCount === 0
+          ? "ADMIN"
+          : "USER";
 
     const hash = await bcrypt.hash(password, 10);
 
@@ -130,25 +117,8 @@ exports.signup = async (req, res) => {
       },
     });
 
-    if (generatedPassword) {
-      await sendMailIfPossible({
-        from: `"Task Manager" <${process.env.EMAILID}>`,
-        to: email,
-        subject: "Your account has been created",
-        html: `
-          <h3>Welcome to Task Manager</h3>
-          <p>Hello <b>${name}</b>,</p>
-          <p>Your account has been created.</p>
-          <p><b>Email:</b> ${email}</p>
-          <p><b>Password:</b> ${generatedPassword}</p>
-          <p>Please login and change your password.</p>
-        `,
-      });
-    }
-
     return res.status(201).json({
       message: "User created successfully",
-      autoPasswordSent: Boolean(generatedPassword),
       user: serializeUser(user),
     });
   } catch (error) {
@@ -199,7 +169,9 @@ exports.login = async (req, res) => {
 exports.all = async (req, res) => {
   try {
     if (!isAdmin(req.user)) {
-      return res.status(403).json({ message: "Only admins can view all users" });
+      return res
+        .status(403)
+        .json({ message: "Only admins can view all users" });
     }
 
     const users = await prisma.user.findMany({
@@ -228,7 +200,9 @@ exports.adminCreateUser = async (req, res) => {
     let { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: "Name, email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Name, email and password are required" });
     }
 
     email = String(email).trim().toLowerCase();
@@ -267,10 +241,14 @@ exports.adminCreateUser = async (req, res) => {
 exports.adminGetUser = async (req, res) => {
   try {
     if (!isAdmin(req.user)) {
-      return res.status(403).json({ message: "Only admins can view user details" });
+      return res
+        .status(403)
+        .json({ message: "Only admins can view user details" });
     }
 
-    const { user, assignedTasks, createdTasks } = await getUserTaskDetails(req.params.id);
+    const { user, assignedTasks, createdTasks } = await getUserTaskDetails(
+      req.params.id,
+    );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -360,23 +338,27 @@ exports.adminUpdateUser = async (req, res) => {
 
 exports.profile = async (req, res) => {
   try {
-    const [countTaskAssignedToMe, countTaskAssignedByMe, countTodoTask, countDoneTask] =
-      await Promise.all([
-        prisma.task.count({ where: { assignedToId: req.user.id } }),
-        prisma.task.count({ where: { createdById: req.user.id } }),
-        prisma.task.count({
-          where: {
-            assignedToId: req.user.id,
-            column: { title: { in: ["Todo", "In Progress"] } },
-          },
-        }),
-        prisma.task.count({
-          where: {
-            assignedToId: req.user.id,
-            column: { title: "Done" },
-          },
-        }),
-      ]);
+    const [
+      countTaskAssignedToMe,
+      countTaskAssignedByMe,
+      countTodoTask,
+      countDoneTask,
+    ] = await Promise.all([
+      prisma.task.count({ where: { assignedToId: req.user.id } }),
+      prisma.task.count({ where: { createdById: req.user.id } }),
+      prisma.task.count({
+        where: {
+          assignedToId: req.user.id,
+          column: { title: { in: ["Todo", "In Progress"] } },
+        },
+      }),
+      prisma.task.count({
+        where: {
+          assignedToId: req.user.id,
+          column: { title: "Done" },
+        },
+      }),
+    ]);
 
     return res.status(200).json({
       userDetail: serializeUser(req.user),
@@ -397,11 +379,21 @@ exports.assigntask = async (req, res) => {
       return res.status(403).json({ message: "Only admins can assign tasks" });
     }
 
-    const { taskTitle, assignedTo, urgency, color, taskDescription, boardId, status, dueDate } =
-      req.body;
+    const {
+      taskTitle,
+      assignedTo,
+      urgency,
+      color,
+      taskDescription,
+      boardId,
+      status,
+      dueDate,
+    } = req.body;
 
     if (!taskTitle || !assignedTo || !boardId) {
-      return res.status(400).json({ message: "Board, title and assigned user are required" });
+      return res
+        .status(400)
+        .json({ message: "Board, title and assigned user are required" });
     }
 
     const [assignee, board, column] = await Promise.all([
@@ -421,7 +413,9 @@ exports.assigntask = async (req, res) => {
     const hasAccess = await canAccessBoard(req.user, boardId);
 
     if (!hasAccess) {
-      return res.status(403).json({ message: "You do not have access to this board" });
+      return res
+        .status(403)
+        .json({ message: "You do not have access to this board" });
     }
 
     if (!column) {
@@ -441,19 +435,6 @@ exports.assigntask = async (req, res) => {
         createdById: req.user.id,
       },
       include: TASK_INCLUDE,
-    });
-
-    await sendMailIfPossible({
-      from: `"Task Manager" <${process.env.EMAILID}>`,
-      to: assignee.email,
-      subject: "New task assigned",
-      html: `
-        <h3>New task assigned</h3>
-        <p>Hello <b>${assignee.name}</b>,</p>
-        <p>You have been assigned a task on <b>${board.title}</b>.</p>
-        <p><b>Title:</b> ${task.title}</p>
-        <p><b>Status:</b> ${task.column.title}</p>
-      `,
     });
 
     return res.status(201).json({
@@ -480,7 +461,9 @@ exports.update = async (req, res) => {
 
     if (password || confirmPassword) {
       if (!password || !confirmPassword) {
-        return res.status(400).json({ message: "Both password fields are required" });
+        return res
+          .status(400)
+          .json({ message: "Both password fields are required" });
       }
 
       if (password !== confirmPassword) {
@@ -596,24 +579,38 @@ exports.updateTask = async (req, res) => {
     const admin = isAdmin(req.user);
 
     if (!admin && !isAssignee) {
-      return res.status(403).json({ message: "You are not authorized to update this task" });
+      return res
+        .status(403)
+        .json({ message: "You are not authorized to update this task" });
     }
 
     const data = {};
-    const { taskTitle, taskDescription, urgency, color, assignedTo, boardId, status, dueDate } =
-      req.body;
+    const {
+      taskTitle,
+      taskDescription,
+      urgency,
+      color,
+      assignedTo,
+      boardId,
+      status,
+      dueDate,
+    } = req.body;
 
     if (admin || isAssignee) {
       if (taskTitle !== undefined) data.title = taskTitle;
-      if (taskDescription !== undefined) data.description = taskDescription || null;
+      if (taskDescription !== undefined)
+        data.description = taskDescription || null;
       if (urgency !== undefined) data.priority = getPriorityValue(urgency);
       if (color !== undefined) data.color = color;
-      if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
+      if (dueDate !== undefined)
+        data.dueDate = dueDate ? new Date(dueDate) : null;
     }
 
     if (admin) {
       if (assignedTo !== undefined) {
-        const assignee = await prisma.user.findUnique({ where: { id: assignedTo } });
+        const assignee = await prisma.user.findUnique({
+          where: { id: assignedTo },
+        });
 
         if (!assignee) {
           return res.status(404).json({ message: "Assigned user not found" });
@@ -624,7 +621,9 @@ exports.updateTask = async (req, res) => {
     }
 
     if (boardId && admin) {
-      const targetBoard = await prisma.board.findUnique({ where: { id: boardId } });
+      const targetBoard = await prisma.board.findUnique({
+        where: { id: boardId },
+      });
 
       if (!targetBoard) {
         return res.status(404).json({ message: "Board not found" });
@@ -671,7 +670,9 @@ exports.deleteTask = async (req, res) => {
     }
 
     if (!isAdmin(req.user) && task.createdById !== req.user.id) {
-      return res.status(403).json({ message: "Only task creator can delete this task" });
+      return res
+        .status(403)
+        .json({ message: "Only task creator can delete this task" });
     }
 
     await prisma.task.delete({ where: { id: task.id } });
@@ -687,7 +688,10 @@ exports.practice = async (req, res) => {
   try {
     const [tasks, totalTaskAssignedToMe, totalTaskAssignedByMe, otherUsers] =
       await Promise.all([
-        prisma.task.findMany({ include: TASK_INCLUDE, orderBy: { createdAt: "desc" } }),
+        prisma.task.findMany({
+          include: TASK_INCLUDE,
+          orderBy: { createdAt: "desc" },
+        }),
         prisma.task.count({ where: { assignedToId: req.user.id } }),
         prisma.task.count({ where: { createdById: req.user.id } }),
         prisma.user.findMany({ where: { id: { not: req.user.id } } }),
@@ -700,7 +704,9 @@ exports.practice = async (req, res) => {
       totalTaskAssignedToMe,
       totalTaskAssignedByMe,
       otherUserNameThanMe: otherUsers.map(serializeUser),
-      detailsOfTask: tasks.filter((task) => task.createdById === req.user.id).map(serializeTask),
+      detailsOfTask: tasks
+        .filter((task) => task.createdById === req.user.id)
+        .map(serializeTask),
     });
   } catch (error) {
     console.error("Practice error:", error);
@@ -735,7 +741,9 @@ exports.getAllTasks = async (req, res) => {
 exports.reassignTask = async (req, res) => {
   try {
     if (!isAdmin(req.user)) {
-      return res.status(403).json({ message: "Only admins can reassign tasks" });
+      return res
+        .status(403)
+        .json({ message: "Only admins can reassign tasks" });
     }
 
     const task = await prisma.task.findUnique({
@@ -787,7 +795,9 @@ exports.deleteUser = async (req, res) => {
     }
 
     if (req.params.id === req.user.id) {
-      return res.status(400).json({ message: "Admin cannot delete own account here" });
+      return res
+        .status(400)
+        .json({ message: "Admin cannot delete own account here" });
     }
 
     await prisma.$transaction([
